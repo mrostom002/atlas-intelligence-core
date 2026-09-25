@@ -2,6 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const MODEL = "gemini-3.8-flash";
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions";
+const RUNTIME_TOKEN_HEADER = "x-atlas-runtime-token";
+
 const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
@@ -42,6 +44,21 @@ const OBSERVATION_SCHEMA = {
 
 function reply(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
+}
+
+async function sha256(value: string) {
+  return new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)),
+  );
+}
+
+async function secureEqual(left: string, right: string) {
+  if (!left || !right) return false;
+  const [a, b] = await Promise.all([sha256(left), sha256(right)]);
+  let diff = a.length ^ b.length;
+  const length = Math.max(a.length, b.length);
+  for (let i = 0; i < length; i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0);
+  return diff === 0;
 }
 
 function isPrivateIpv4(hostname: string) {
@@ -90,24 +107,36 @@ function collectUrlCitations(raw: any) {
     }));
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method !== "POST") return reply(405, { error: "method_not_allowed" });
+async function authorizeRequest(
+  req: Request,
+  supabaseUrl: string,
+  anonKey: string,
+  serviceKey: string,
+) {
+  const configuredRuntimeToken = Deno.env.get("ATLAS_PUBLIC_RUNTIME_TOKEN") || "";
+  const presentedRuntimeToken = req.headers.get(RUNTIME_TOKEN_HEADER) || "";
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !anonKey || !serviceKey) return reply(500, { error: "runtime_not_configured" });
+  if (
+    configuredRuntimeToken &&
+    presentedRuntimeToken &&
+    await secureEqual(configuredRuntimeToken, presentedRuntimeToken)
+  ) {
+    return { ok: true as const, mode: "runtime" as const, principal: "atlas-public-runtime" };
+  }
 
   const authHeader = req.headers.get("authorization") || "";
-  if (!authHeader.toLowerCase().startsWith("bearer ")) return reply(401, { error: "unauthorized" });
+  if (!authHeader.toLowerCase().startsWith("bearer ")) {
+    return { ok: false as const, status: 401, error: "unauthorized" };
+  }
 
   const caller = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+
   const { data: userData, error: userError } = await caller.auth.getUser();
   const email = userData.user?.email?.trim().toLowerCase();
-  if (userError || !email) return reply(401, { error: "unauthorized" });
+  if (userError || !email) return { ok: false as const, status: 401, error: "unauthorized" };
 
   const admin = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -118,10 +147,26 @@ Deno.serve(async (req: Request) => {
     .eq("email", email)
     .maybeSingle();
 
-  if (allowedError) return reply(500, { error: "authorization_lookup_failed" });
-  if (!allowed || allowed.status !== "active" || !["owner", "admin", "operator"].includes(allowed.role)) {
-    return reply(403, { error: "forbidden" });
+  if (allowedError) {
+    return { ok: false as const, status: 500, error: "authorization_lookup_failed" };
   }
+  if (!allowed || allowed.status !== "active" || !["owner", "admin", "operator"].includes(allowed.role)) {
+    return { ok: false as const, status: 403, error: "forbidden" };
+  }
+
+  return { ok: true as const, mode: "user" as const, principal: email };
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method !== "POST") return reply(405, { error: "method_not_allowed" });
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !anonKey || !serviceKey) return reply(500, { error: "runtime_not_configured" });
+
+  const authorization = await authorizeRequest(req, supabaseUrl, anonKey, serviceKey);
+  if (!authorization.ok) return reply(authorization.status, { error: authorization.error });
 
   const geminiKey = Deno.env.get("GEMINI_API_KEY");
   if (!geminiKey) {
@@ -218,6 +263,7 @@ Deno.serve(async (req: Request) => {
     model: MODEL,
     interaction_id: raw?.id || null,
     data_class: "public",
+    auth_mode: authorization.mode,
     observations,
     url_citations: collectUrlCitations(raw),
     url_context_results: (raw?.steps || []).filter((step: any) => step?.type === "url_context_result"),
