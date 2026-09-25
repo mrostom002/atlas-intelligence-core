@@ -1,0 +1,37 @@
+name: Atlas Intelligence Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run all Node contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' tests < <(find tests -type f -name '*.test.mjs' -print0 | sort -z)
+          if [ "${#tests[@]}" -eq 0 ]; then
+            echo "No .test.mjs files found"
+            exit 1
+          fi
+          for test_file in "${tests[@]}"; do
+            echo "Running $test_file"
+            node "$test_file"
+          done
