@@ -99,6 +99,18 @@ Evidence remains the underlying:
 - verified public publication
 - observed outcome
 
+## Opportunity Radar input adapter
+`private.opportunity_radar` is the current private opportunity/hypothesis surface.
+
+The v0.2 adapter converts each row into a Brain case while preserving conservative semantics:
+- all rows default to CONFIDENTIAL_COMMERCIAL;
+- amount_value is NOT treated as expected GP unless amount_basis / money_state explicitly identifies Atlas margin, commission, fee or capture;
+- early/qualified/contracted financial states remain distinct;
+- blockers, next action, evidence state, time-to-cash and strategic value are carried into the Brain case;
+- raw private evidence refs are not required by the reasoning contract and are not exposed to PUBLIC-model routes.
+
+This lets the Brain reason over the evolving Opportunity Radar instead of relying on four hard-coded Phase-0 cards.
+
 ## Triggering
 By default the cycle only reasons cases linked to a meaningful change.
 
