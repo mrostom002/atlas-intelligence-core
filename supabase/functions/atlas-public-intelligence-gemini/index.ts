@@ -238,9 +238,17 @@ Deno.serve(async (req: Request) => {
 
   const raw = await geminiResponse.json().catch(() => null);
   if (!geminiResponse.ok) {
+    const upstreamError = raw?.error || raw || {};
+    const upstreamMessage = typeof upstreamError?.message === "string"
+      ? upstreamError.message.slice(0, 1200)
+      : null;
+    const retryAfter = geminiResponse.headers.get("retry-after");
     return reply(502, {
       error: "gemini_request_failed",
       upstream_status: geminiResponse.status,
+      upstream_error_code: upstreamError?.code || upstreamError?.status || null,
+      upstream_error_message: upstreamMessage,
+      retry_after: retryAfter || null,
       latency_ms: Date.now() - started,
     });
   }
