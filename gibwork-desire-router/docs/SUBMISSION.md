@@ -39,6 +39,7 @@ node dist/src/mcp.js
 
 - Automated tests: `test/router.test.ts`
 - Verified dry-run output: `docs/demo-output.json`
+- Short terminal demo recording: `docs/desire-router-demo.mp4`
 - Dedicated CI run: https://github.com/mrostom002/atlas-intelligence-core/actions/runs/38088747440 — install, build, tests, demo and artifact all passed.
 - Parent public-repository security/test run: https://github.com/mrostom002/atlas-intelligence-core/actions/runs/38088747434 — passed.
 - Spend boundary: no MCP tool exposes funded creation; CLI funded creation needs explicit `--execute` + local key + `GIBWORK_ALLOW_SPEND=YES`.
@@ -55,7 +56,7 @@ node dist/src/mcp.js
 - [x] Automated tests
 - [x] Green GitHub Actions receipt
 - [x] Verified terminal output artifact
-- [ ] Short demo recording, if the current submission form requires video rather than terminal evidence
+- [x] Short demo recording
 - [ ] Participant Discord role / current platform submission gate
 
 ## Bounty
