@@ -6,6 +6,11 @@ on:
     paths:
       - 'gibwork-desire-router/**'
       - '.github/workflows/gibwork-desire-router.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'gibwork-desire-router/**'
+      - '.github/workflows/gibwork-desire-router.yml'
   workflow_dispatch:
 
 jobs:
