@@ -1,0 +1,29 @@
+{
+  "decision": "DELEGATE",
+  "confidence": 0.91,
+  "reasons": [
+    "The outcome contains an external-world or specialist execution component.",
+    "The work can be bounded into a verifiable deliverable suitable for a bounty."
+  ],
+  "blockedActions": [
+    "automatic payment",
+    "credential disclosure",
+    "irreversible external action"
+  ],
+  "brief": {
+    "title": "Record three UGC videos in Cairo and attach source files",
+    "content": "Desired outcome: Record three UGC videos in Cairo and attach source files\n\nSuccess means a decision-ready deliverable that satisfies the requirements below.",
+    "requirements": [
+      "Return the requested outcome, not a plan for doing it.",
+      "Cite or attach evidence for factual claims and externally sourced results.",
+      "Separate verified facts, assumptions, and unresolved gaps.",
+      "Do not request passwords, seed phrases, private keys, or unnecessary personal data.",
+      "Do not make payments, publish externally, or take irreversible actions without requester approval.",
+      "Use only sanitized inputs; do not reconstruct private source data."
+    ],
+    "tags": ["Agent", "Delegation", "Outcome", "Research"],
+    "budgetUsd": 100,
+    "minSubmissionUsd": 50,
+    "deadlineHours": 12
+  }
+}
